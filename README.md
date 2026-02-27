@@ -1,5 +1,9 @@
 # Green Mountain Power (GMP)
 
+> ⚠️ This is an unofficial Home Assistant integration for Green Mountain Power.  
+> Green Mountain Power and its logo are trademarks of Green Mountain Power.  
+> This project is not affiliated with or endorsed by Green Mountain Power.
+
 Home Assistant custom integration for Green Mountain Power usage and EV charging data.
 
 ## Installation (HACS)
