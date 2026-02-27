@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "documentation": "https://github.com/findthelorax/gmp",
   "issue_tracker": "https://github.com/findthelorax/gmp/issues",
+  "platforms": ["sensor", "select"],
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@findthelorax"],
