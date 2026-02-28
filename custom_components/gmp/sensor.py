@@ -21,6 +21,57 @@ def _strip_usage_values(values: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return stripped
 
 
+def _first_interval(data: dict[str, Any] | None) -> dict[str, Any] | None:
+
+    intervals = (data or {}).get("intervals") or []
+    if not isinstance(intervals, list) or not intervals:
+        return None
+
+    for item in intervals:
+        if isinstance(item, dict):
+            return item
+    return None
+
+
+def _usage_values(data: dict[str, Any] | None) -> list[dict[str, Any]]:
+
+    if not data:
+        return []
+
+    interval = _first_interval(data)
+    if interval and isinstance(interval.get("values"), list):
+        return [v for v in interval.get("values") if isinstance(v, dict)]
+
+    if isinstance(data.get("values"), list):
+        return [v for v in data.get("values") if isinstance(v, dict)]
+
+    nested = data.get("data")
+    if isinstance(nested, dict):
+        return _usage_values(nested)
+
+    # Last resort: find the first list[dict] that looks like usage values.
+    for value in data.values():
+        if isinstance(value, dict):
+            values = _usage_values(value)
+            if values:
+                return values
+        if isinstance(value, list) and value and all(isinstance(v, dict) for v in value):
+            if any(
+                isinstance(v, dict) and ("consumed" in v or "consumedTotal" in v or "date" in v)
+                for v in value
+            ):
+                return value
+
+    return []
+
+
+def _usage_start_end(data: dict[str, Any] | None) -> tuple[Any, Any]:
+    interval = _first_interval(data)
+    if not interval:
+        return None, None
+    return interval.get("start"), interval.get("end")
+
+
 def _latest_numeric(values: list[dict[str, Any]], key: str) -> float | None:
 
     for item in reversed(values):
@@ -174,20 +225,19 @@ class GMPDailyUsageSensor(GMPBaseSensor):
     @property
     def native_value(self) -> float | None:
         daily: dict[str, Any] | None = self.coordinator.data.get("daily")
-        intervals = (daily or {}).get("intervals") or []
-        if not intervals:
+        values = _usage_values(daily)
+        if not values:
             return None
-        values = intervals[0].get("values") or []
-        return _latest_numeric(values, "consumed")
+        return _latest_numeric_any(values, ("consumed", "consumedTotal"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         daily: dict[str, Any] | None = self.coordinator.data.get("daily")
-        intervals = (daily or {}).get("intervals") or []
-        values = (intervals[0].get("values") if intervals else []) or []
+        start, end = _usage_start_end(daily)
+        values = _usage_values(daily)
         return {
-            "start": (intervals[0].get("start") if intervals else None),
-            "end": (intervals[0].get("end") if intervals else None),
+            "start": start,
+            "end": end,
             "values": _strip_usage_values(values),
         }
 
@@ -205,21 +255,22 @@ class GMPMonthlyUsageSensor(GMPBaseSensor):
     @property
     def native_value(self) -> float | None:
         monthly: dict[str, Any] | None = self.coordinator.data.get("monthly")
-        intervals = (monthly or {}).get("intervals") or []
-        if not intervals:
+        values = _usage_values(monthly)
+        if not values:
             return None
-        values = intervals[0].get("values") or []
         return _latest_numeric_any(values, ("consumed", "consumedTotal"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         monthly: dict[str, Any] | None = self.coordinator.data.get("monthly")
-        intervals = (monthly or {}).get("intervals") or []
-        values = (intervals[0].get("values") if intervals else []) or []
+        start, end = _usage_start_end(monthly)
+        values = _usage_values(monthly)
+        errors = self.coordinator.data.get("errors") or {}
         return {
-            "start": (intervals[0].get("start") if intervals else None),
-            "end": (intervals[0].get("end") if intervals else None),
+            "start": start,
+            "end": end,
             "values": _strip_usage_values(values),
+            "fetch_error": errors.get("monthly"),
         }
 
 
@@ -236,10 +287,9 @@ class GMPSelectedDayTotalSensor(GMPBaseSensor):
     @property
     def native_value(self) -> float | None:
         selected: dict[str, Any] | None = self.coordinator.data.get("selected_hourly")
-        intervals = (selected or {}).get("intervals") or []
-        if not intervals:
+        values = _usage_values(selected)
+        if not values:
             return None
-        values = intervals[0].get("values") or []
         total = 0.0
         seen_any = False
         for item in values:
@@ -257,11 +307,12 @@ class GMPSelectedDayTotalSensor(GMPBaseSensor):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         selected: dict[str, Any] | None = self.coordinator.data.get("selected_hourly")
-        intervals = (selected or {}).get("intervals") or []
-        values = (intervals[0].get("values") if intervals else []) or []
+        values = _usage_values(selected)
+        errors = self.coordinator.data.get("errors") or {}
         return {
             "selected_date": self.coordinator.data.get("selected_date"),
             "values": _strip_usage_values(values),
+            "fetch_error": errors.get("selected_hourly"),
         }
 
 
