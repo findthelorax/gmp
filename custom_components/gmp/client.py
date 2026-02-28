@@ -12,7 +12,7 @@ from urllib.parse import urlencode
 
 import aiohttp
 
-from .exceptions import GMPAuthError, GMPConnectionError
+from .exceptions import GMPAuthError, GMPConnectionError, GMPNoUsageDataError
 
 @dataclass(frozen=True)
 class GMPTokens:
@@ -140,6 +140,19 @@ class GMPClient:
                     async with self._session.get(url, headers=self._auth_headers()) as retry_resp:
                         if retry_resp.status >= 400:
                             body = await retry_resp.text()
+                            if retry_resp.status == 404:
+                                try:
+                                    payload = json.loads(body) if body else None
+                                except Exception:
+                                    payload = None
+                                if (
+                                    isinstance(payload, dict)
+                                    and payload.get("errorCode") == "USAGE_DATA_NOT_FOUND"
+                                ):
+                                    raise GMPNoUsageDataError(
+                                        payload.get("message")
+                                        or "Usage data not found for requested dates"
+                                    )
                             if retry_resp.status in (401, 403):
                                 raise GMPAuthError("Unauthorized")
                             raise GMPConnectionError(
@@ -149,6 +162,19 @@ class GMPClient:
 
                 if resp.status >= 400:
                     body = await resp.text()
+                    if resp.status == 404:
+                        try:
+                            payload = json.loads(body) if body else None
+                        except Exception:
+                            payload = None
+                        if (
+                            isinstance(payload, dict)
+                            and payload.get("errorCode") == "USAGE_DATA_NOT_FOUND"
+                        ):
+                            raise GMPNoUsageDataError(
+                                payload.get("message")
+                                or "Usage data not found for requested dates"
+                            )
                     if resp.status in (401, 403):
                         raise GMPAuthError("Unauthorized")
                     raise GMPConnectionError(f"{resp.status} for {url}: {body[:500]}")
@@ -397,7 +423,10 @@ class GMPClient:
             },
         )
 
-        return await self._async_get_json(url)
+        try:
+            return await self._async_get_json(url)
+        except GMPNoUsageDataError:
+            return {"intervals": []}
 
     async def async_get_usage_summary(self, account_id: str) -> dict[str, Any]:
 

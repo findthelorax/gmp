@@ -6,3 +6,7 @@ class GMPAuthError(GMPError):
 
 class GMPConnectionError(GMPError):
     """Connection failed."""
+
+
+class GMPNoUsageDataError(GMPError):
+    """Usage data was not available for the requested dates."""
