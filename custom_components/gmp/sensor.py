@@ -32,6 +32,18 @@ def _latest_numeric(values: list[dict[str, Any]], key: str) -> float | None:
     return None
 
 
+def _latest_numeric_any(values: list[dict[str, Any]], keys: tuple[str, ...]) -> float | None:
+
+    for item in reversed(values):
+        if not isinstance(item, dict):
+            continue
+        for key in keys:
+            val = item.get(key)
+            if isinstance(val, (int, float)):
+                return float(val)
+    return None
+
+
 def _power_status(status: dict[str, Any] | None) -> str | None:
 
     if not status:
@@ -197,7 +209,7 @@ class GMPMonthlyUsageSensor(GMPBaseSensor):
         if not intervals:
             return None
         values = intervals[0].get("values") or []
-        return _latest_numeric(values, "consumed")
+        return _latest_numeric_any(values, ("consumed", "consumedTotal"))
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -235,7 +247,12 @@ class GMPSelectedDayTotalSensor(GMPBaseSensor):
             if isinstance(consumed, (int, float)):
                 total += float(consumed)
                 seen_any = True
-        return round(total, 2) if seen_any else None
+        if seen_any:
+            return round(total, 2)
+
+        # Fallback: Some responses only include cumulative totals.
+        consumed_total = _latest_numeric_any(values, ("consumedTotal",))
+        return round(consumed_total, 2) if consumed_total is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
