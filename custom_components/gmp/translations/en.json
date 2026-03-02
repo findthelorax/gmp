@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Green Mountain Power",
+        "description": "Sign in to your Green Mountain Power account.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
+      },
+      "account_select": {
+        "title": "Select account",
+        "description": "Select the account to use.",
+        "data": {
+          "account_id": "Account ID"
+        }
+      },
+      "account": {
+        "title": "Account ID",
+        "description": "Enter the account ID to use.",
+        "data": {
+          "account_id": "Account ID"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect",
+      "invalid_auth": "Invalid authentication",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Account is already configured"
+    }
+  }
+}

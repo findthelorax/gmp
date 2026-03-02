@@ -1,0 +1,13 @@
+{
+  "domain": "gmp",
+  "name": "Green Mountain Power",
+  "version": "1.0.0",
+  "codeowners": ["@findthelorax"],
+  "config_flow": true,
+  "dependencies": [],
+  "requirements": [],
+  "iot_class": "cloud_polling",
+  "documentation": "https://github.com/findthelorax/gmp",
+  "issue_tracker": "https://github.com/findthelorax/gmp/issues",
+  "icon": "/custom_components/gmp/icon.png"
+}
